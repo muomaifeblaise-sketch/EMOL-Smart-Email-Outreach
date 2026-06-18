@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMOL — Smart Email Outreach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#08090d; --surface:#10121a; --surface2:#161923; --border:#1e2535;
+      --green:#00e5a0; --green-dim:#00e5a022; --blue:#3b82f6;
+      --text:#e2e8f0; --muted:#9aafc5; --faint:#3a4a5e;
+    }
+    html,body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; overflow-x:hidden; }
+    body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events:none; z-index:9999; opacity:.5; }
+    .glow-orb { position:fixed; border-radius:50%; filter:blur(120px); pointer-events:none; z-index:0; }
+    .glow-orb.top-left  { width:500px; height:500px; background:#00e5a018; top:-120px; left:-120px; }
+    .glow-orb.bot-right { width:400px; height:400px; background:#3b82f614; bottom:-100px; right:-80px; }
+
+    /* ── INTRO ── */
+    #intro { position:fixed; inset:0; background:var(--bg); z-index:10000; display:flex; align-items:center; justify-content:center; pointer-events:none; flex-direction:column; }
+    #intro-logo { display:flex; flex-direction:column; align-items:center; }
+    .emol-logo { display:flex; gap:0; line-height:1; margin-bottom:20px; }
+    .emol-logo .letter {
+      font-family:'Nunito',sans-serif; font-weight:900;
+      font-size:clamp(72px,20vw,160px); color:var(--text);
+      opacity:0; transform:translateY(40px) scale(.92); display:inline-block;
+    }
+    .emol-logo .letter.accent { color:var(--green); }
+    #il-e { animation:letterIn .6s cubic-bezier(.16,1,.3,1) .2s forwards; }
+    #il-m { animation:letterIn .6s cubic-bezier(.16,1,.3,1) .4s forwards; }
+    #il-o { animation:letterIn .6s cubic-bezier(.16,1,.3,1) .6s forwards; }
+    #il-l { animation:letterIn .6s cubic-bezier(.16,1,.3,1) .8s forwards; }
+    .logo-bar {
+      width:0; height:4px;
+      background:linear-gradient(90deg,var(--green),var(--blue));
+      border-radius:99px; margin:0 auto 16px;
+      animation:expandBar .7s cubic-bezier(.16,1,.3,1) 1.2s forwards;
+    }
+    #intro-tagline {
+      font-size:clamp(.85rem,2vw,1.05rem); color:var(--muted);
+      font-weight:300; letter-spacing:.08em; opacity:0;
+      animation:fadeUp .5s ease 1.6s forwards;
+    }
+    @keyframes letterIn { to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes expandBar { to { width:clamp(80px,20vw,240px); } }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
+    @keyframes fadeDown { from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
+
+    /* ── TOPBAR ── */
+    .topbar { position:fixed; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding:22px 48px; z-index:100; opacity:0; transform:translateY(-10px); animation:fadeDown .6s ease 3.0s forwards; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid transparent; transition:border-color .4s,background .4s; }
+    .topbar.scrolled { border-color:var(--border); background:rgba(8,9,13,.85); }
+    .topbar-logo { display:inline-block; font-family:'Nunito',sans-serif; font-weight:900; font-size:1.3rem; letter-spacing:0; color:var(--text); text-decoration:none; }
+    .topbar-logo span { color:var(--green); letter-spacing:0; }
+    .topbar-nav { display:flex; gap:12px; align-items:center; }
+    .btn-ghost { background:none; border:1px solid var(--border); color:var(--muted); font-family:'DM Sans',sans-serif; font-size:.85rem; font-weight:500; padding:8px 20px; border-radius:8px; cursor:pointer; transition:all .2s; text-decoration:none; display:inline-block; }
+    .btn-ghost:hover { border-color:var(--green); color:var(--green); }
+    .btn-solid { background:var(--green); border:1px solid var(--green); color:#08090d; font-family:'DM Sans',sans-serif; font-size:.85rem; font-weight:600; padding:8px 20px; border-radius:8px; cursor:pointer; transition:all .2s; text-decoration:none; display:inline-block; }
+    .btn-solid:hover { background:#00fbb5; }
+
+    /* ── HERO SPLIT ── */
+    .hero { position:relative; z-index:1; min-height:100vh; display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:48px; padding:120px 64px 80px; max-width:1400px; margin:0 auto; opacity:0; }
+    .hero-left { display:flex; flex-direction:column; align-items:flex-start; }
+    .tag-pill { display:inline-flex; align-items:center; gap:8px; background:var(--green-dim); border:1px solid #00e5a040; border-radius:999px; padding:6px 16px; font-size:.78rem; color:var(--green); letter-spacing:.06em; margin-bottom:28px; }
+    .tag-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse-dot 2s infinite; flex-shrink:0; }
+    .hero-headline { font-family:'Nunito',sans-serif; font-weight:900; font-size:clamp(2.2rem,4vw,3.6rem); line-height:1.1; color:var(--text); margin-bottom:24px; letter-spacing:-.02em; }
+    .hero-headline span { color:var(--green); }
+    .hero-sub { font-size:clamp(.95rem,1.5vw,1.1rem); color:var(--muted); font-weight:300; line-height:1.75; max-width:420px; margin-bottom:44px; }
+    .cta-row { display:flex; gap:14px; flex-wrap:wrap; }
+    .cta-primary { background:var(--green); color:#08090d; font-family:'DM Sans',sans-serif; font-weight:700; font-size:1rem; padding:14px 36px; border-radius:10px; border:none; cursor:pointer; transition:all .2s; text-decoration:none; display:inline-block; }
+    .cta-primary:hover { background:#00fbb5; transform:translateY(-2px); box-shadow:0 8px 32px #00e5a030; }
+    .cta-secondary { background:var(--surface); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:500; font-size:1rem; padding:14px 36px; border-radius:10px; border:1px solid var(--border); cursor:pointer; transition:all .2s; text-decoration:none; display:inline-block; }
+    .cta-secondary:hover { border-color:var(--green); color:var(--green); transform:translateY(-2px); }
+    .hero-meta { margin-top:48px; display:flex; gap:36px; flex-wrap:wrap; }
+    .hero-meta-item { display:flex; flex-direction:column; }
+    .hero-meta-num { font-family:'Nunito',sans-serif; font-weight:900; font-size:1.6rem; color:var(--green); line-height:1; }
+    .hero-meta-label { font-size:.78rem; color:var(--muted); margin-top:4px; }
+    .hero-right { position:relative; display:flex; flex-direction:column; align-items:flex-start; width:100%; }
+
+    /* ── PRODUCT PREVIEW ── */
+    .prev-stage { position:relative; width:100%; max-width:640px; perspective:1600px; }
+    .prev-glow { position:absolute; inset:-60px; background:radial-gradient(ellipse at 50% 50%,rgba(0,229,160,.1) 0%,transparent 65%); pointer-events:none; filter:blur(30px); z-index:-1; }
+    .prev-window { position:relative; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.11); box-shadow:0 0 0 1px rgba(255,255,255,.04),0 30px 80px rgba(0,0,0,.65),0 0 120px rgba(0,229,160,.05); transform-style:preserve-3d; transition:transform .12s ease,box-shadow .4s ease; will-change:transform; background:#0f0f0f; user-select:none; }
+    .prev-window:hover { box-shadow:0 0 0 1px rgba(0,229,160,.18),0 40px 100px rgba(0,0,0,.75),0 0 160px rgba(0,229,160,.09); }
+    .prev-chrome { height:42px; background:#141414; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; padding:0 16px; gap:14px; flex-shrink:0; }
+    .pc-dots { display:flex; gap:6px; flex-shrink:0; }
+    .pc-dot { width:11px; height:11px; border-radius:50%; }
+    .pc-dot.red{background:#ff5f56;} .pc-dot.yellow{background:#ffbd2e;} .pc-dot.green{background:#27c93f;}
+    .pc-url { flex:1; max-width:280px; margin:0 auto; background:#1e1e1e; border:1px solid rgba(255,255,255,.07); border-radius:7px; padding:5px 10px; display:flex; align-items:center; gap:6px; min-width:0; }
+    .pc-url svg{flex-shrink:0;}
+    .pc-url-text { font-size:.7rem; color:#666; font-family:'DM Sans',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+    .pc-right{flex-shrink:0;display:flex;gap:7px;}
+    .pc-right-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.12);}
+    .prev-body { display:flex; height:420px; overflow:hidden; }
+    .prev-sidebar { width:148px; flex-shrink:0; background:#171717; border-right:1px solid rgba(255,255,255,.06); display:flex; flex-direction:column; padding:12px 8px; overflow:hidden; }
+    .psb-logo { font-family:'Nunito',sans-serif; font-weight:900; font-size:.92rem; background:linear-gradient(135deg,#00e5a0,#3b82f6); -webkit-background-clip:text; background-clip:text; color:transparent; padding:2px 6px 11px; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,.06); }
+    .psb-nav{flex:1;display:flex;flex-direction:column;gap:2px;overflow:hidden;}
+    .psb-item { display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; color:#4a4a4a; font-size:.67rem; font-weight:500; transition:all .25s; cursor:default; white-space:nowrap; border:1px solid transparent; }
+    .psb-item svg{width:12px;height:12px;flex-shrink:0;opacity:.7;}
+    .psb-item.active{background:rgba(0,229,160,.1);border-color:rgba(0,229,160,.15);color:#00e5a0;font-weight:700;}
+    .psb-item.active svg{opacity:1;}
+    .psb-section-lbl{font-size:.52rem;color:#333;letter-spacing:1.1px;text-transform:uppercase;padding:8px 8px 2px;font-weight:700;}
+    .psb-user{display:flex;align-items:center;gap:7px;padding:8px;background:#1e1e1e;border-radius:8px;border:1px solid rgba(255,255,255,.06);margin-top:8px;}
+    .psb-avatar{width:26px;height:26px;border-radius:6px;flex-shrink:0;background:linear-gradient(135deg,#00e5a0,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:.56rem;font-weight:900;color:#000;}
+    .psb-uname{font-size:.65rem;font-weight:700;color:#d0d0d0;white-space:nowrap;}
+    .psb-urole{font-size:.54rem;color:#00e5a0;font-weight:600;}
+    .prev-screens{flex:1;position:relative;overflow:hidden;background:#0f0f0f;}
+    .sc{position:absolute;inset:0;opacity:0;transform:translateY(12px) scale(.99);transition:opacity .55s ease,transform .55s ease;pointer-events:none;display:flex;flex-direction:column;}
+    .sc.active{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+    .sc-top{height:46px;min-height:46px;background:#181818;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:0 14px;gap:10px;overflow:hidden;}
+    .sc-top-greet{font-family:'Nunito',sans-serif;font-weight:800;font-size:.73rem;color:#d0d0d0;white-space:nowrap;flex-shrink:0;}
+    .sc-top-greet span{color:#00e5a0;}
+    .sc-top-pills{display:flex;gap:5px;margin-left:auto;flex-shrink:0;}
+    .sc-top-pill{padding:4px 9px;border-radius:999px;background:#222;border:1px solid rgba(255,255,255,.07);color:#444;font-size:.58rem;font-weight:600;white-space:nowrap;}
+    .sc-top-pill.active{background:rgba(0,229,160,.1);border-color:rgba(0,229,160,.25);color:#00e5a0;}
+    .sc-top-btn{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;background:#00e5a0;color:#000;font-size:.6rem;font-weight:800;white-space:nowrap;flex-shrink:0;}
+    .sc-body{flex:1;overflow:hidden;padding:11px;display:flex;flex-direction:column;gap:9px;}
+    .sc-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .sc-stat-box{background:#181818;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 11px;position:relative;overflow:hidden;}
+    .sc-stat-box::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,160,.35),transparent);}
+    .sc-stat-lbl{font-size:.56rem;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+    .sc-stat-val{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.2rem;color:#00e5a0;line-height:1;}
+    .sc-stat-val.blue{color:#3b82f6;} .sc-stat-val.white{color:#e0e0e0;}
+    .sc-stat-delta{font-size:.54rem;color:#444;margin-top:3px;}
+    .sc-two-col{display:grid;grid-template-columns:1fr 1fr;gap:9px;flex:1;min-height:0;}
+    .sc-mini-card{background:#181818;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 11px;overflow:hidden;display:flex;flex-direction:column;}
+    .sc-mini-card-title{font-size:.6rem;font-weight:700;color:#d0d0d0;margin-bottom:8px;flex-shrink:0;}
+    .sc-camp-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+    .sc-camp-row:last-child{border-bottom:none;}
+    .sc-camp-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+    .sc-camp-dot.green{background:#00e5a0;} .sc-camp-dot.blue{background:#3b82f6;} .sc-camp-dot.muted{background:#333;}
+    .sc-camp-name{font-size:.6rem;color:#aaa;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .sc-camp-rate{font-size:.6rem;color:#00e5a0;font-weight:700;flex-shrink:0;}
+    .sc-sparkline{flex:1;display:flex;align-items:flex-end;gap:3px;min-height:0;}
+    .sc-spark-bar{flex:1;border-radius:2px 2px 0 0;background:linear-gradient(180deg,#00e5a0 0%,rgba(0,229,160,.15) 100%);transition:height .6s ease;}
+    .sc-ai-layout{display:grid;grid-template-columns:1fr 1fr;gap:9px;flex:1;min-height:0;}
+    .sc-ai-panel{background:#181818;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;overflow:hidden;}
+    .sc-ai-label{font-size:.58rem;color:#555;text-transform:uppercase;letter-spacing:.5px;}
+    .sc-ai-input{background:#111;border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:6px 8px;font-size:.62rem;color:#aaa;font-family:'DM Sans',sans-serif;}
+    .sc-ai-btn{background:#00e5a0;color:#000;border-radius:6px;padding:6px 10px;font-size:.6rem;font-weight:800;text-align:center;cursor:default;margin-top:auto;}
+    .sc-ai-result{background:#181818;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 11px;flex:1;min-height:0;overflow:hidden;}
+    .sc-ai-result-label{font-size:.58rem;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+    #aiTypingText{font-size:.6rem;color:#bbb;line-height:1.6;white-space:pre-wrap;font-family:'DM Sans',sans-serif;}
+    .sc-hunt-top{display:flex;gap:7px;flex-shrink:0;}
+    .sc-hunt-input{flex:1;background:#181818;border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:7px 10px;font-size:.62rem;color:#aaa;font-family:'DM Sans',sans-serif;}
+    .sc-hunt-btn{background:#00e5a0;color:#000;border-radius:7px;padding:7px 12px;font-size:.6rem;font-weight:800;white-space:nowrap;cursor:default;}
+    .sc-hunt-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;flex:1;min-height:0;overflow:hidden;}
+    .sc-biz-card{background:#181818;border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:9px 10px;overflow:hidden;}
+    .sc-biz-name{font-size:.65rem;font-weight:700;color:#d0d0d0;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .sc-biz-cat{font-size:.56rem;color:#555;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .sc-biz-tags{display:flex;gap:4px;flex-wrap:wrap;}
+    .sc-biz-tag{font-size:.52rem;font-weight:700;padding:2px 6px;border-radius:4px;}
+    .sc-biz-tag.no-web{background:rgba(255,107,53,.12);color:#ff6b35;border:1px solid rgba(255,107,53,.2);}
+    .sc-biz-tag.has-web{background:rgba(0,229,160,.1);color:#00e5a0;border:1px solid rgba(0,229,160,.2);}
+    .sc-analytics-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex-shrink:0;}
+    .sc-anal-stat{background:#181818;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:9px 11px;text-align:center;position:relative;overflow:hidden;}
+    .sc-anal-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,160,.3),transparent);}
+    .sc-anal-val{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.15rem;color:#00e5a0;line-height:1;}
+    .sc-anal-val.blue{color:#3b82f6;} .sc-anal-val.orange{color:#ff6b35;}
+    .sc-anal-lbl{font-size:.54rem;color:#444;margin-top:3px;}
+    .sc-bar-chart-wrap{background:#181818;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:11px;flex:1;min-height:0;display:flex;flex-direction:column;}
+    .sc-bar-chart-title{font-size:.62rem;font-weight:700;color:#d0d0d0;margin-bottom:9px;flex-shrink:0;}
+    .sc-bar-group{display:flex;align-items:flex-end;gap:5px;flex:1;min-height:0;padding-bottom:2px;}
+    .sc-bar{flex:1;border-radius:3px 3px 0 0;min-height:4px;background:linear-gradient(180deg,#00e5a0 0%,rgba(0,229,160,.2) 100%);transition:height .8s cubic-bezier(.34,1.56,.64,1);}
+    .sc-bar.blue{background:linear-gradient(180deg,#3b82f6 0%,rgba(59,130,246,.2) 100%);}
+    .sc-bar-labels{display:flex;gap:5px;flex-shrink:0;margin-top:5px;}
+    .sc-bar-label{flex:1;text-align:center;font-size:.5rem;color:#333;}
+    .prev-cursor{position:absolute;pointer-events:none;z-index:50;top:50%;left:50%;transform:translate(-2px,-2px);opacity:0;transition:top .85s cubic-bezier(.4,0,.2,1),left .85s cubic-bezier(.4,0,.2,1),opacity .4s ease;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));}
+    .prev-ripple{position:absolute;width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(0,229,160,.7);pointer-events:none;z-index:49;opacity:0;transform:translate(-50%,-50%) scale(0);}
+    .prev-ripple.pop{animation:ripple-pop .5s ease forwards;}
+    .prev-tabs{display:flex;justify-content:flex-start;gap:6px;margin-top:16px;flex-wrap:wrap;}
+    .ptab{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;background:transparent;border:1px solid rgba(255,255,255,.1);color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;}
+    .ptab:hover{border-color:var(--green);color:var(--green);}
+    .ptab.active{background:rgba(0,229,160,.1);border-color:rgba(0,229,160,.3);color:var(--green);}
+    .ptab svg{width:13px;height:13px;flex-shrink:0;}
+
+    /* ── FEATURES ── */
+    .features{position:relative;z-index:1;padding:120px 64px;max-width:1400px;margin:0 auto;}
+    .section-eyebrow{font-size:.72rem;letter-spacing:.18em;color:var(--green);text-transform:uppercase;margin-bottom:16px;font-weight:600;}
+    .section-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:clamp(1.8rem,3.5vw,2.8rem);color:var(--text);line-height:1.15;margin-bottom:16px;}
+    .section-title span{color:var(--green);}
+    .section-desc{font-size:1rem;color:var(--muted);line-height:1.7;max-width:520px;margin-bottom:60px;font-weight:300;}
+    .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
+    .feature-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;transition:border-color .3s,transform .3s;position:relative;overflow:hidden;}
+    .feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;transition:opacity .3s;}
+    .feature-card:hover{border-color:#00e5a040;transform:translateY(-4px);}
+    .feature-card:hover::before{opacity:1;}
+    .feature-icon{width:48px;height:48px;background:var(--green-dim);border:1px solid #00e5a030;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;transition:background .3s,border-color .3s;}
+    .feature-card:hover .feature-icon{background:#00e5a030;border-color:#00e5a060;}
+    .feature-card h3{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.05rem;margin-bottom:10px;color:var(--text);}
+    .feature-card p{font-size:.88rem;color:var(--muted);line-height:1.65;}
+
+    /* ── STATS ── */
+    .stats-strip{position:relative;z-index:1;background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:56px 48px;display:flex;justify-content:center;gap:80px;flex-wrap:wrap;}
+    .stat-item{text-align:center;}
+    .stat-num{font-family:'Nunito',sans-serif;font-weight:900;font-size:2.6rem;color:var(--green);line-height:1;}
+    .stat-label{font-size:.82rem;color:var(--muted);margin-top:6px;letter-spacing:.04em;}
+    footer{position:relative;z-index:1;text-align:center;padding:40px 24px;color:var(--faint);font-size:.82rem;}
+    footer strong{color:var(--muted);}
+
+    /* ── REVEAL ── */
+    .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease;}
+    .reveal.visible{opacity:1;transform:translateY(0);}
+
+    /* ── KEYFRAMES ── */
+    @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.6);}}
+    @keyframes ripple-pop{0%{opacity:1;transform:translate(-50%,-50%) scale(0);}70%{opacity:.4;transform:translate(-50%,-50%) scale(2.5);}100%{opacity:0;transform:translate(-50%,-50%) scale(3);}}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:1024px){
+      .hero{grid-template-columns:1fr;padding:110px 40px 60px;gap:60px;}
+      .hero-left{align-items:center;text-align:center;}
+      .hero-sub{max-width:100%;}
+      .hero-meta{justify-content:center;}
+      .prev-tabs{justify-content:center;}
+      .features{padding:80px 40px;}
+    }
+    @media(max-width:768px){
+      .topbar{padding:18px 24px;}
+      .hero{padding:100px 24px 60px;}
+      .prev-body{height:340px;}
+      .prev-sidebar{width:44px;padding:10px 5px;}
+      .psb-logo{font-size:.7rem;padding:2px 2px 10px;text-align:center;white-space:nowrap;overflow:hidden;}
+      .psb-item{padding:7px 5px;justify-content:center;font-size:0;}
+      .psb-item span{display:none;}
+      .psb-section-lbl{display:none;}
+      .psb-user{padding:6px;justify-content:center;}
+      .psb-uname,.psb-urole{display:none;}
+      .sc-stat-row{grid-template-columns:1fr 1fr;}
+      .sc-stat-row .sc-stat-box:last-child{grid-column:span 2;}
+      .sc-ai-layout{grid-template-columns:1fr;}
+      .sc-ai-result{display:none;}
+      .sc-analytics-stats{grid-template-columns:1fr 1fr;}
+      .features{padding:60px 24px;}
+      .stats-strip{gap:40px;padding:48px 24px;}
+    }
+    @media(max-width:480px){
+      .topbar{padding:14px 16px;}
+      .hero{padding:90px 16px 52px;}
+      .hero-headline{font-size:2rem;}
+      .cta-row{flex-direction:column;width:100%;}
+      .cta-primary,.cta-secondary{text-align:center;}
+      .prev-sidebar{display:none;}
+      .sc-top-pills{display:none;}
+      .sc-top-btn{display:none;}
+      .sc-two-col{grid-template-columns:1fr;}
+      .sc-mini-card:last-child{display:none;}
+      .sc-hunt-grid{grid-template-columns:1fr;}
+      .sc-hunt-grid .sc-biz-card:nth-child(n+3){display:none;}
+      .prev-tabs{gap:5px;}
+      .ptab{padding:7px 12px;font-size:.72rem;}
+      .features{padding:52px 16px;}
+      .features-grid{grid-template-columns:1fr;}
+      .stats-strip{display:grid;grid-template-columns:1fr 1fr;gap:24px 16px;padding:36px 16px;}
+      .stat-num{font-size:2rem;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ INTRO OVERLAY ═══ -->
+<div id="intro">
+  <div id="intro-logo">
+    <div class="emol-logo" id="intro-emol-logo">
+      <span class="letter" id="il-e">E</span>
+      <span class="letter" id="il-m">M</span>
+      <span class="letter accent" id="il-o">O</span>
+      <span class="letter" id="il-l">L</span>
+    </div>
+    <div class="logo-bar" id="intro-bar"></div>
+    <p class="tagline" id="intro-tagline">Smart Email Outreach</p>
+  </div>
+</div>
+
+<div class="glow-orb top-left"></div>
+<div class="glow-orb bot-right"></div>
+
+<!-- ═══ TOPBAR ═══ -->
+<nav class="topbar" id="topbar">
+  <a href="#" class="topbar-logo">EM<span>O</span>L</a>
+  <div class="topbar-nav">
+    <a href="signin.php" class="btn-ghost">Sign In</a>
+    <a href="signup.php" class="btn-solid">Get Started</a>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="hero">
+  <div class="hero-left">
+    <div class="tag-pill">
+      <span class="tag-dot"></span>
+      AI-Powered Email Outreach
+    </div>
+    <h1 class="hero-headline">
+      Reach more.<br>
+      Close faster.<br>
+      <span>Grow smarter.</span>
+    </h1>
+    <p class="hero-sub">
+      EMOL finds your leads, writes personalized emails with AI, and sends your campaigns — all from one clean dashboard.
+    </p>
+    <div class="cta-row">
+      <a href="signup.php" class="cta-primary">Start for Free</a>
+      <a href="signin.php" class="cta-secondary">Sign In</a>
+    </div>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-num">51%</span>
+        <span class="hero-meta-label">Avg. open rate</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-num">10x</span>
+        <span class="hero-meta-label">Faster prospecting</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-num">0</span>
+        <span class="hero-meta-label">Setup headaches</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="prev-stage" id="prevStage">
+      <div class="prev-glow"></div>
+      <div class="prev-window" id="prevWindow">
+        <div class="prev-chrome">
+          <div class="pc-dots">
+            <span class="pc-dot red"></span>
+            <span class="pc-dot yellow"></span>
+            <span class="pc-dot green"></span>
+          </div>
+          <div class="pc-url">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span class="pc-url-text" id="prevUrl">emol.app/dashboard</span>
+          </div>
+          <div class="pc-right"><span class="pc-right-dot"></span><span class="pc-right-dot"></span><span class="pc-right-dot"></span></div>
+        </div>
+        <div class="prev-body">
+          <div class="prev-sidebar">
+            <div class="psb-logo">EMOL</div>
+            <div class="psb-nav">
+              <div class="psb-section-lbl">Main</div>
+              <div class="psb-item active" data-sid="0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                <span>Dashboard</span>
+              </div>
+              <div class="psb-item" data-sid="1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                <span>AI Writer</span>
+              </div>
+              <div class="psb-item" data-sid="2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span>Lead Hunt</span>
+              </div>
+              <div class="psb-section-lbl">Insights</div>
+              <div class="psb-item" data-sid="3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+                <span>Analytics</span>
+              </div>
+            </div>
+            <div class="psb-user">
+              <div class="psb-avatar">JD</div>
+              <div><div class="psb-uname">John D.</div><div class="psb-urole">Pro Plan</div></div>
+            </div>
+          </div>
+          <div class="prev-screens">
+            <!-- SCREEN 0: DASHBOARD -->
+            <div class="sc active" id="sc-0">
+              <div class="sc-top">
+                <div class="sc-top-greet">Good morning, <span>John</span> 👋</div>
+                <div class="sc-top-pills"><span class="sc-top-pill active">Today</span><span class="sc-top-pill">This Week</span></div>
+                <div class="sc-top-btn">+ New Campaign</div>
+              </div>
+              <div class="sc-body">
+                <div class="sc-stat-row">
+                  <div class="sc-stat-box"><div class="sc-stat-lbl">Emails Sent</div><div class="sc-stat-val">2,841</div><div class="sc-stat-delta">↑ 12% vs last week</div></div>
+                  <div class="sc-stat-box"><div class="sc-stat-lbl">Open Rate</div><div class="sc-stat-val blue">51.4%</div><div class="sc-stat-delta">↑ 3.2% vs last week</div></div>
+                  <div class="sc-stat-box"><div class="sc-stat-lbl">Replies</div><div class="sc-stat-val white">184</div><div class="sc-stat-delta">↑ 8% vs last week</div></div>
+                </div>
+                <div class="sc-two-col">
+                  <div class="sc-mini-card">
+                    <div class="sc-mini-card-title">Active Campaigns</div>
+                    <div class="sc-camp-row"><span class="sc-camp-dot green"></span><span class="sc-camp-name">Lagos Restaurants</span><span class="sc-camp-rate">54%</span></div>
+                    <div class="sc-camp-row"><span class="sc-camp-dot blue"></span><span class="sc-camp-name">Abuja Clinics</span><span class="sc-camp-rate">48%</span></div>
+                    <div class="sc-camp-row"><span class="sc-camp-dot muted"></span><span class="sc-camp-name">PH Tech Startups</span><span class="sc-camp-rate">39%</span></div>
+                  </div>
+                  <div class="sc-mini-card">
+                    <div class="sc-mini-card-title">This Week</div>
+                    <div class="sc-sparkline">
+                      <div class="sc-spark-bar" style="height:35%"></div>
+                      <div class="sc-spark-bar" style="height:55%"></div>
+                      <div class="sc-spark-bar" style="height:40%"></div>
+                      <div class="sc-spark-bar" style="height:70%"></div>
+                      <div class="sc-spark-bar" style="height:60%"></div>
+                      <div class="sc-spark-bar" style="height:85%"></div>
+                      <div class="sc-spark-bar" style="height:75%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- SCREEN 1: AI WRITER -->
+            <div class="sc" id="sc-1">
+              <div class="sc-top">
+                <div class="sc-top-greet"><span>AI</span> Email Writer</div>
+                <div class="sc-top-pills"><span class="sc-top-pill active">Cold Outreach</span><span class="sc-top-pill">Follow-Up</span></div>
+              </div>
+              <div class="sc-body">
+                <div class="sc-ai-layout">
+                  <div class="sc-ai-panel">
+                    <div class="sc-ai-label">Business Type</div>
+                    <div class="sc-ai-input">Medical Clinic</div>
+                    <div class="sc-ai-label">Tone</div>
+                    <div class="sc-ai-input">Professional</div>
+                    <div class="sc-ai-label">Focus</div>
+                    <div class="sc-ai-input">Patient growth</div>
+                    <div class="sc-ai-btn">✦ Generate Email</div>
+                  </div>
+                  <div class="sc-ai-result">
+                    <div class="sc-ai-result-label">Generated Email</div>
+                    <div id="aiTypingText"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- SCREEN 2: LEAD HUNT -->
+            <div class="sc" id="sc-2">
+              <div class="sc-top">
+                <div class="sc-top-greet"><span>Lead</span> Hunter</div>
+                <div class="sc-top-btn">Export CSV</div>
+              </div>
+              <div class="sc-body">
+                <div class="sc-hunt-top">
+                  <div class="sc-hunt-input">Restaurants · Lagos</div>
+                  <div class="sc-hunt-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Hunt Leads</div>
+                </div>
+                <div class="sc-hunt-grid">
+                  <div class="sc-biz-card"><div class="sc-biz-name">Mama Cass Restaurant</div><div class="sc-biz-cat">Restaurant · Lagos Island</div><div class="sc-biz-tags"><span class="sc-biz-tag no-web">No Website</span></div></div>
+                  <div class="sc-biz-card"><div class="sc-biz-name">Spice Garden</div><div class="sc-biz-cat">Restaurant · Victoria Island</div><div class="sc-biz-tags"><span class="sc-biz-tag no-web">No Website</span></div></div>
+                  <div class="sc-biz-card"><div class="sc-biz-name">The Palm Grill</div><div class="sc-biz-cat">Restaurant · Lekki</div><div class="sc-biz-tags"><span class="sc-biz-tag has-web">Has Website</span></div></div>
+                  <div class="sc-biz-card"><div class="sc-biz-name">Sunset Buka</div><div class="sc-biz-cat">Local Food · Surulere</div><div class="sc-biz-tags"><span class="sc-biz-tag no-web">No Website</span></div></div>
+                </div>
+              </div>
+            </div>
+            <!-- SCREEN 3: ANALYTICS -->
+            <div class="sc" id="sc-3">
+              <div class="sc-top">
+                <div class="sc-top-greet">Analytics <span>Overview</span></div>
+                <div class="sc-top-pills"><span class="sc-top-pill active" style="background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:#60a5fa">Weekly</span></div>
+              </div>
+              <div class="sc-body">
+                <div class="sc-analytics-stats">
+                  <div class="sc-anal-stat"><div class="sc-anal-val">51.4%</div><div class="sc-anal-lbl">Open Rate</div></div>
+                  <div class="sc-anal-stat"><div class="sc-anal-val blue">6.5%</div><div class="sc-anal-lbl">Reply Rate</div></div>
+                  <div class="sc-anal-stat"><div class="sc-anal-val orange">2,841</div><div class="sc-anal-lbl">Total Sent</div></div>
+                </div>
+                <div class="sc-bar-chart-wrap">
+                  <div class="sc-bar-chart-title">Weekly Email Activity</div>
+                  <div class="sc-bar-group" id="analyticsBarGroup">
+                    <div class="sc-bar" data-h="40"></div><div class="sc-bar blue" data-h="25"></div>
+                    <div class="sc-bar" data-h="68"></div><div class="sc-bar blue" data-h="45"></div>
+                    <div class="sc-bar" data-h="82"></div><div class="sc-bar blue" data-h="57"></div>
+                    <div class="sc-bar" data-h="73"></div><div class="sc-bar blue" data-h="48"></div>
+                    <div class="sc-bar" data-h="90"></div><div class="sc-bar blue" data-h="62"></div>
+                    <div class="sc-bar" data-h="55"></div><div class="sc-bar blue" data-h="36"></div>
+                    <div class="sc-bar" data-h="78"></div><div class="sc-bar blue" data-h="52"></div>
+                  </div>
+                  <div class="sc-bar-labels">
+                    <div class="sc-bar-label">Mon</div><div class="sc-bar-label">Tue</div>
+                    <div class="sc-bar-label">Wed</div><div class="sc-bar-label">Thu</div>
+                    <div class="sc-bar-label">Fri</div><div class="sc-bar-label">Sat</div>
+                    <div class="sc-bar-label">Sun</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="prev-cursor" id="prevCursor">
+          <svg width="18" height="21" viewBox="0 0 18 21" fill="none">
+            <path d="M2 2L2 16L5.5 12L8.5 19.5L11 18.3L8 11H14L2 2Z" fill="white" stroke="#1a1a1a" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="prev-ripple" id="prevRipple"></div>
+      </div>
+    </div>
+    <div class="prev-tabs">
+      <button class="ptab active" onclick="prevSwitch(0)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+      <button class="ptab" onclick="prevSwitch(1)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        AI Writer
+      </button>
+      <button class="ptab" onclick="prevSwitch(2)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Lead Hunt
+      </button>
+      <button class="ptab" onclick="prevSwitch(3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+        Analytics
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section class="features">
+  <div class="reveal">
+    <div class="section-eyebrow">What EMOL does</div>
+    <h2 class="section-title">Built for outreach<br>that <span>actually converts</span></h2>
+    <p class="section-desc">Every tool you need to find leads, write compelling emails, and track results — without switching between a dozen apps.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card reveal">
+      <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></div>
+      <h3>Business Discovery</h3>
+      <p>Search any city and category. Find hundreds of qualified leads instantly — including businesses with no website.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><path d="M7 11V9a5 5 0 0 1 10 0v2"/></svg></div>
+      <h3>AI Email Writer</h3>
+      <p>Generate personalized cold emails in seconds. Set the tone, the goal, the industry — AI handles the rest.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+      <h3>Campaign Sending</h3>
+      <p>Launch campaigns and send directly from the platform. Track opens, replies, and conversions in real time.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2 20 7.5l-11 11a3.536 3.536 0 1 1-5-5L14.5 2z"/><path d="M15 7 9 13"/></svg></div>
+      <h3>A/B Testing</h3>
+      <p>Test subject lines and email bodies side by side. Double down on what your audience actually responds to.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></div>
+      <h3>Analytics</h3>
+      <p>Open rates, click rates, reply rates — all your numbers in one clean view. Know exactly what's working.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg></div>
+      <h3>Contacts & Templates</h3>
+      <p>Build your contact database and save your best-performing templates for instant reuse across future campaigns.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<div class="stats-strip reveal">
+  <div class="stat-item"><div class="stat-num">10x</div><div class="stat-label">Faster Prospecting</div></div>
+  <div class="stat-item"><div class="stat-num">51%</div><div class="stat-label">Average Open Rate</div></div>
+  <div class="stat-item"><div class="stat-num">100%</div><div class="stat-label">Your Data, Private</div></div>
+  <div class="stat-item"><div class="stat-num">0</div><div class="stat-label">Setup Headaches</div></div>
+</div>
+
+<footer>
+  <strong>EMOL</strong> &nbsp;·&nbsp; Smart Email Outreach &nbsp;·&nbsp; &copy; 2026
+</footer>
+
+<script>
+/* ══ INTRO ANIMATION ══ */
+(function(){
+  const intro  = document.getElementById('intro');
+  const topbar = document.getElementById('topbar');
+  const hero   = document.getElementById('hero');
+
+  // Skip animation if arriving from logout
+  const fromLogout = new URLSearchParams(window.location.search).get('from') === 'logout';
+  if(fromLogout){
+    intro.style.display    = 'none';
+    hero.style.opacity     = '1';
+    topbar.style.opacity   = '1';
+    topbar.style.transform = 'translateY(0)';
+    topbar.style.animation = 'none';
+    history.replaceState(null, '', window.location.pathname);
+    return;
+  }
+
+  // t=2600 — logo fades up and out (after letters + bar + tagline have all shown)
+  setTimeout(()=>{
+    const logo = document.getElementById('intro-logo');
+    logo.style.transition = 'transform .65s cubic-bezier(.4,0,.2,1), opacity .5s ease';
+    logo.style.transform  = 'translateY(-30px) scale(0.85)';
+    logo.style.opacity    = '0';
+  }, 2600);
+
+  // t=3000 — page reveals, topbar slides down via CSS animation already set
+  setTimeout(()=>{
+    intro.style.transition = 'opacity .55s ease';
+    intro.style.opacity    = '0';
+    hero.style.transition  = 'opacity .8s ease .15s';
+    hero.style.opacity     = '1';
+    setTimeout(()=>{ intro.style.display='none'; }, 600);
+  }, 3000);
+})();
+
+/* ══ TOPBAR SCROLL ══ */
+window.addEventListener('scroll',()=>{
+  document.getElementById('topbar').classList.toggle('scrolled',window.scrollY>20);
+});
+
+/* ══ SCROLL REVEAL ══ */
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach((e,i)=>{
+    if(e.isIntersecting){ setTimeout(()=>e.target.classList.add('visible'),i*80); ro.unobserve(e.target); }
+  });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+
+/* ══ PRODUCT PREVIEW ══ */
+(function(){
+  const win=document.getElementById('prevWindow');
+  const stage=document.getElementById('prevStage');
+  const cursor=document.getElementById('prevCursor');
+  const ripple=document.getElementById('prevRipple');
+  const urlEl=document.getElementById('prevUrl');
+  const tabs=document.querySelectorAll('.ptab');
+  const sbItems=document.querySelectorAll('[data-sid]');
+  let current=0,autoTimer=null,typTimer=null,wpTimer=null,wpIdx=0,paused=false;
+  const URLS=['emol.app/dashboard','emol.app/app?page=aiwriter','emol.app/app?page=leadhunt','emol.app/app?page=analytics'];
+  const SB_MAP={0:'0',1:'1',2:'2',3:'3'};
+  const WP={
+    0:[[42,30],[62,30],[83,30],[45,65],[75,65],[50,80]],
+    1:[[28,48],[28,60],[28,72],[28,85],[70,55],[70,70]],
+    2:[[40,25],[78,25],[32,58],[72,58],[32,78],[72,78]],
+    3:[[32,30],[58,30],[84,30],[50,65],[70,75]]
+  };
+  const AI_TEXT=`Dear Sunrise Clinic Team,\n\nI hope this finds you well. I'm reaching out about a partnership that could grow your patient reach in Lagos.\n\nOur platform connects clinics like yours with targeted outreach — no website required.\n\nWould you be open to a quick call this week?\n\nBest,\nEMOL Outreach`;
+
+  function switchScreen(n){
+    if(n===current&&n!==0)return;
+    document.querySelectorAll('.sc').forEach(el=>el.classList.remove('active'));
+    tabs.forEach(el=>el.classList.remove('active'));
+    sbItems.forEach(el=>el.classList.remove('active'));
+    current=n;
+    const sc=document.getElementById('sc-'+n);
+    if(sc)sc.classList.add('active');
+    if(tabs[n])tabs[n].classList.add('active');
+    sbItems.forEach(el=>{if(el.dataset.sid===SB_MAP[n])el.classList.add('active');});
+    if(urlEl)urlEl.textContent=URLS[n];
+    wpIdx=0; clearTimeout(wpTimer); cursor.style.opacity='0';
+    setTimeout(()=>{cursor.style.opacity='1';moveCursor();},400);
+    if(n===1)startTyping();
+    if(n===3)animateBars();
+  }
+  function moveCursor(){
+    const wps=WP[current]; if(!wps||!win)return;
+    const wp=wps[wpIdx%wps.length];
+    const wr=win.getBoundingClientRect();
+    cursor.style.left=(wp[0]/100)*wr.width+'px';
+    cursor.style.top=(wp[1]/100)*wr.height+'px';
+    if(wpIdx%2===0)showRipple((wp[0]/100)*wr.width,(wp[1]/100)*wr.height);
+    wpIdx++; if(wpIdx>=wps.length)wpIdx=0;
+    wpTimer=setTimeout(moveCursor,1400);
+  }
+  function showRipple(x,y){
+    ripple.style.left=x+'px'; ripple.style.top=y+'px';
+    ripple.classList.remove('pop'); void ripple.offsetWidth; ripple.classList.add('pop');
+  }
+  function startTyping(){
+    const el=document.getElementById('aiTypingText'); if(!el)return;
+    clearTimeout(typTimer); el.textContent=''; let i=0;
+    function type(){
+      if(current!==1)return;
+      if(i<AI_TEXT.length){el.textContent+=AI_TEXT[i]==='\n'?'\n':AI_TEXT[i];i++;typTimer=setTimeout(type,i<20?60:22);}
+    }
+    type();
+  }
+  function animateBars(){
+    const bars=document.querySelectorAll('#analyticsBarGroup .sc-bar');
+    bars.forEach(bar=>{bar.style.height='2%';});
+    setTimeout(()=>{bars.forEach(bar=>{bar.style.height=parseInt(bar.dataset.h,10)+'%';});},120);
+  }
+  function startAuto(){
+    clearInterval(autoTimer);
+    autoTimer=setInterval(()=>{if(!paused)switchScreen((current+1)%4);},5000);
+  }
+  if(stage&&win){
+    stage.addEventListener('mousemove',e=>{
+      const wr=win.getBoundingClientRect();
+      const dx=(e.clientX-(wr.left+wr.width/2))/(wr.width/2);
+      const dy=(e.clientY-(wr.top+wr.height/2))/(wr.height/2);
+      win.style.transform=`perspective(1600px) rotateX(${-dy*6}deg) rotateY(${dx*9}deg) translateZ(16px)`;
+    });
+    stage.addEventListener('mouseleave',()=>{win.style.transform='perspective(1600px) rotateX(0deg) rotateY(0deg) translateZ(0)';});
+    win.addEventListener('mouseenter',()=>{paused=true;});
+    win.addEventListener('mouseleave',()=>{paused=false;});
+  }
+  window.prevSwitch=function(n){
+    paused=true; switchScreen(n); clearInterval(autoTimer);
+    setTimeout(()=>{paused=false;startAuto();},8000);
+  };
+  switchScreen(0); startAuto();
+})();
+</script>
+</body>
+</html>
